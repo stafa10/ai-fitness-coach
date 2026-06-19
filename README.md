@@ -1,2 +1,2 @@
-# ai-fitness-coach
+# Ai Fitness Coach
 AI-powered fitness coaching platform built with SvelteKit, FastAPI, and PostgreSQL.

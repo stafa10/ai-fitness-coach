@@ -19,4 +19,20 @@ export const profiles = pgTable('profiles', {
 	injuries: text('injuries'),
 	workout_days: integer('workout_days'),
 	equipment_access: varchar('equipment_access', { length: 100 })
+});import { pgTable, serial, text, integer, real, timestamp } from 'drizzle-orm/pg-core';
+import { user } from './auth.schema.js';
+
+// User fitness profile
+export const profile = pgTable('profile', {
+    id: serial('id').primaryKey(),
+    userId: text('user_id').notNull().references(() => user.id),
+    age: integer('age'),
+    height: real('height'),
+    weight: real('weight'),
+    goal: text('goal'),
+    experience: text('experience'),
+    trainingDays: integer('training_days').default(3),
+    updatedAt: timestamp('updated_at').defaultNow()
 });
+
+export * from './auth.schema.js';

@@ -12,17 +12,37 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest",
 		"test": "npm run test:unit -- --run && npm run test:e2e",
+<<<<<<< HEAD
 		"test:e2e": "playwright install && playwright test"
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+=======
+		"test:e2e": "playwright install && playwright test",
+		"db:push": "drizzle-kit push",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "drizzle-kit migrate",
+		"db:studio": "drizzle-kit studio",
+		"auth:schema": "better-auth generate --config src/lib/server/auth.js --output src/lib/server/db/auth.schema.js --yes"
+	},
+	"devDependencies": {
+		"@better-auth/cli": "~1.4.21",
+		"@eslint/js": "^10.0.1",
+		"@neondatabase/serverless": "^1.1.0",
+>>>>>>> 68463f0 (Initial commit)
 		"@playwright/test": "^1.60.0",
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^24",
 		"@vitest/browser-playwright": "^4.1.8",
+<<<<<<< HEAD
 		"drizzle-kit": "^0.31.10",
+=======
+		"better-auth": "~1.4.21",
+		"drizzle-kit": "^0.31.10",
+		"drizzle-orm": "^0.45.2",
+>>>>>>> 68463f0 (Initial commit)
 		"eslint": "^10.4.1",
 		"eslint-config-prettier": "^10.1.8",
 		"eslint-plugin-svelte": "^3.19.0",
@@ -36,8 +56,14 @@
 		"vitest-browser-svelte": "^2.1.1"
 	},
 	"dependencies": {
+<<<<<<< HEAD
 		"dotenv": "^17.4.2",
 		"drizzle-orm": "^0.45.2",
 		"pg": "^8.22.0"
+=======
+		"bootstrap": "^5.3.8",
+		"bootstrap-icons": "^1.13.1",
+		"drizzle-zod": "^0.8.3"
+>>>>>>> 68463f0 (Initial commit)
 	}
 }

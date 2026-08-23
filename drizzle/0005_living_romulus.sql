@@ -1,0 +1,1 @@
+ALTER TABLE "workout_sets" ALTER COLUMN "reps" SET DATA TYPE varchar(20);

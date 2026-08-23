@@ -1,10 +1,13 @@
-import type { User, Session } from 'better-auth';
+import type { Session, User } from 'better-auth';
 
 declare global {
 	namespace App {
 		interface Locals {
-			user?: User;
-			session?: Session;
+			session: Session | null;
+			user: User | null;
+			locale: string;
 		}
 	}
 }
+
+export {};

@@ -23,3 +23,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # Playwright
 test-results
+
+# User-uploaded workout videos
+/static/uploads
+
+# Local Claude Code settings
+.claude

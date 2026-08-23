@@ -1,0 +1,1 @@
+ALTER TABLE "profiles" ADD COLUMN "generated_workout_at" timestamp;

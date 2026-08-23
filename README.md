@@ -1,20 +1,3 @@
-<<<<<<< HEAD
-# AI Fitness Coach
-
-AI-powered fitness coaching platform built with SvelteKit, PostgreSQL, and Drizzle ORM.
-
-## Features
-- User profile creation
-- Fitness tracking system
-- Database integration (PostgreSQL + Drizzle ORM)
-- Modern web app built with SvelteKit
-
-## Setup
-
-```bash
-npm install
-npm run dev
-=======
 # sv
 
 Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
@@ -32,7 +15,7 @@ To recreate this project with the same configuration:
 
 ```sh
 # recreate this project
-npx sv@0.16.1 create --template minimal --no-types --add prettier eslint vitest="usages:unit,component" playwright sveltekit-adapter="adapter:auto" drizzle="database:postgresql+postgresql:neon" --install npm ai-fitness-coach
+npx sv@0.16.1 create --template minimal --no-types --add prettier eslint vitest="usages:unit,component" playwright sveltekit-adapter="adapter:auto" drizzle="database:postgresql+postgresql:postgres.js+docker:no" --install npm .
 ```
 
 ## Developing
@@ -57,4 +40,3 @@ npm run build
 You can preview the production build with `npm run preview`.
 
 > To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
->>>>>>> 68463f0 (Initial commit)

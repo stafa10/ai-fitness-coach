@@ -1,0 +1,97 @@
+:root {
+	/* Background */
+	--bg-deep: #0a0714;
+	--bg-mid: #120b24;
+	--bg-panel: #16102b;
+	--bg-panel-soft: #130d24;
+	--bg-input: #0f0a1f;
+
+	/* Accent — bold violet → hot-pink identity, with an electric "volt" pop color */
+	--accent-blue: #7c3aed;
+	--accent-purple: #ec4899;
+	--accent-volt: #d7ff3d;
+	--accent-teal: #22d3ee;
+	--accent-green: #22c55e;
+	--accent-red: #f43f5e;
+	--gradient-accent: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+	--gradient-volt: linear-gradient(135deg, var(--accent-volt), var(--accent-teal));
+
+	/* Text */
+	--text-primary: #ffffff;
+	--text-muted: rgba(255, 255, 255, 0.7);
+	--text-faint: rgba(255, 255, 255, 0.45);
+	--text-placeholder: #362a52;
+
+	/* Borders */
+	--border-subtle: rgba(255, 255, 255, 0.08);
+	--border-strong: #2a1f47;
+
+	/* Radius */
+	--radius-sm: 10px;
+	--radius-md: 16px;
+	--radius-lg: 22px;
+	--radius-xl: 24px;
+
+	/* Shadow */
+	--shadow-panel: 0 20px 40px rgba(0, 0, 0, 0.45);
+	--shadow-glow-blue: 0 8px 24px rgba(124, 58, 237, 0.35);
+	--shadow-glow-volt: 0 8px 24px rgba(215, 255, 61, 0.25);
+
+	/* Font */
+	--font-sans: 'Inter', system-ui, sans-serif;
+	--font-display: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+
+	/* Motion */
+	--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+	--ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+	--motion-fast: 0.15s;
+	--motion-base: 0.25s;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--font-sans);
+	min-height: 100vh;
+	background:
+		radial-gradient(
+			circle at 15% 10%,
+			color-mix(in srgb, var(--accent-blue) 55%, transparent) 0%,
+			transparent 40%
+		),
+		radial-gradient(
+			circle at 85% 90%,
+			color-mix(in srgb, var(--accent-purple) 50%, transparent) 0%,
+			transparent 40%
+		),
+		linear-gradient(180deg, var(--bg-deep), var(--bg-mid));
+	background-attachment: fixed;
+	color: var(--text-primary);
+}
+
+h1,
+h2,
+h3 {
+	font-family: var(--font-display);
+}
+
+@keyframes fade-in-up {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.motion-in {
+	animation: fade-in-up var(--motion-base) var(--ease-out) both;
+}

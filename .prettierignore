@@ -7,7 +7,4 @@ bun.lockb
 
 # Miscellaneous
 /static/
-<<<<<<< HEAD
-=======
 /drizzle/
->>>>>>> 68463f0 (Initial commit)

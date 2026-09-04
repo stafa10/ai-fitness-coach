@@ -10,6 +10,8 @@
 <style>
 	.card {
 		position: relative;
+		height: 100%;
+		box-sizing: border-box;
 		background: var(--bg-panel);
 		border: 1px solid var(--border-subtle);
 		border-radius: var(--radius-lg);

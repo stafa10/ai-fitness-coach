@@ -3,6 +3,7 @@ export const translations = {
 		nav: {
 			dashboard: 'Dashboard',
 			workoutLog: 'Workout Log',
+			nutrition: 'Nutrition',
 			aiCoach: 'AI Coach',
 			profile: 'Profile',
 			admin: 'Admin',
@@ -208,7 +209,23 @@ export const translations = {
 			daysAgo: '{n} days ago',
 			weekAgo: '1 week ago',
 			weeksAgo: '{n} weeks ago',
-			friendFallback: 'there'
+			friendFallback: 'there',
+			adherenceHeatmap: 'Workout Adherence',
+			last12Weeks: 'Last 12 weeks',
+			sessionsIn12Weeks: 'sessions in the last 12 weeks',
+			less: 'Less',
+			more: 'More',
+			heatmapVolumeLogged: '{n} kg logged that day.',
+			heatmapNoSession: 'No session logged that day.',
+			viewInHistory: 'View in History →',
+			strengthProgression: 'Strength Progression',
+			sessionsLogged: 'sessions logged',
+			strengthEmpty:
+				'Log the same exercise across a couple of sessions to see its progression here.',
+			customTarget: 'Custom',
+			logFood: 'Log food',
+			calculatedWouldBe: 'Calculated target would be {n} kcal — you’ve set your own.',
+			loggedToday: '{cal} of {target} kcal logged today'
 		},
 		profile: {
 			updateTitle: 'Update Your Fitness Profile',
@@ -241,6 +258,10 @@ export const translations = {
 			healthNotes: 'Health notes',
 			injuries: 'Injuries / Limitations',
 			injuriesPlaceholder: 'Example: lower back pain, knee discomfort, shoulder limitation...',
+			nutrition: 'Nutrition',
+			customCalorieTarget: 'Custom calorie target (optional)',
+			customCalorieTargetPlaceholder: 'e.g. 2400',
+			customCalorieTargetHint: 'Leave blank to use the automatically calculated target.',
 			save: 'Save Profile'
 		},
 		history: {
@@ -253,6 +274,31 @@ export const translations = {
 			newer: 'Newer',
 			older: 'Older',
 			pageLabel: 'Page {page} of {total}'
+		},
+		nutrition: {
+			title: 'Nutrition',
+			subtitle: 'Log what you eat and track it against your targets.',
+			needsProfileNotice: 'Create your fitness profile to set up nutrition targets.',
+			createProfile: 'Create Profile',
+			todaysTargets: "Today's Targets",
+			calories: 'Calories',
+			todaysLog: "Today's Log",
+			selectFood: 'Select a food…',
+			log: 'Log',
+			emptyToday: 'Nothing logged yet today.',
+			noFoodsYet: 'Add a food to your library first, then log it here.',
+			removeEntry: 'Remove entry',
+			myFoods: 'My Foods',
+			addFood: 'Add food',
+			cancel: 'Cancel',
+			foodName: 'Food name',
+			servingSize: 'Serving size (e.g. 100g)',
+			proteinG: 'Protein (g)',
+			carbsG: 'Carbs (g)',
+			fatsG: 'Fats (g)',
+			save: 'Save Food',
+			noCustomFoods: "You haven't added any foods yet.",
+			removeFood: 'Remove food'
 		},
 		coach: {
 			setupTitle: 'Set up your profile first',

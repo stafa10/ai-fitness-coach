@@ -34,6 +34,12 @@ export const actions = {
 
 		const injuries = data.get('injuries')?.toString() || null;
 
+		const customCalorieRaw = data.get('custom_calorie_target')?.toString().trim();
+		const customCalorieTarget = customCalorieRaw ? Number(customCalorieRaw) : null;
+		if (customCalorieRaw && (!customCalorieTarget || customCalorieTarget <= 0)) {
+			return fail(400, { error: 'Custom calorie target must be a positive number.' });
+		}
+
 		if (!age || !height || !weight || !goal || !experience) {
 			return fail(400, {
 				error: 'Please complete all required fields.'
@@ -51,7 +57,8 @@ export const actions = {
 			activityLevel,
 			workoutDays,
 			equipmentAccess,
-			injuries
+			injuries,
+			customCalorieTarget
 		};
 
 		const [existing] = await db

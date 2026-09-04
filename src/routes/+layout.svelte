@@ -30,6 +30,7 @@
 			<div class="nav-links">
 				<a href={resolve('/dashboard')}>{t('nav.dashboard')}</a>
 				<a href={resolve('/workout-log')}>{t('nav.workoutLog')}</a>
+				<a href={resolve('/nutrition')}>{t('nav.nutrition')}</a>
 				<a href={resolve('/coach')}>{t('nav.aiCoach')}</a>
 				<a href={resolve('/profile')}>{t('nav.profile')}</a>
 				{#if isAdmin}

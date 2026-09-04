@@ -31,6 +31,7 @@
 	let workoutDays = $state(profile?.workoutDays ?? '');
 	let equipment = $state(profile?.equipmentAccess ?? '');
 	let injuries = $state(profile?.injuries ?? '');
+	let customCalorieTarget = $state(profile?.customCalorieTarget ?? '');
 </script>
 
 <svelte:head>
@@ -211,6 +212,20 @@
 					rows="4"
 					placeholder={t('profile.injuriesPlaceholder')}
 					bind:value={injuries}></textarea>
+			</div>
+
+			<p class="section-label">{t('profile.nutrition')}</p>
+			<div class="field">
+				<label for="custom_calorie_target">{t('profile.customCalorieTarget')}</label>
+				<input
+					id="custom_calorie_target"
+					name="custom_calorie_target"
+					type="number"
+					placeholder={t('profile.customCalorieTargetPlaceholder')}
+					bind:value={customCalorieTarget}
+					min="1"
+				/>
+				<p class="field-hint">{t('profile.customCalorieTargetHint')}</p>
 			</div>
 
 			{#if form?.error}
@@ -421,6 +436,11 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.45rem;
+	}
+	.field-hint {
+		margin: 0;
+		font-size: 0.78rem;
+		color: var(--text-faint);
 	}
 
 	label {

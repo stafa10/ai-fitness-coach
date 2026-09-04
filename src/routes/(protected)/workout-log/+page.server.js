@@ -6,6 +6,7 @@ import { mkdir, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { computeStreak } from '$lib/server/trainingSummary.js';
+import { getExerciseInsights } from '$lib/server/exerciseInsights.js';
 
 const UPLOAD_DIR = path.join('static', 'uploads', 'workouts');
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024; // 200MB
@@ -62,54 +63,6 @@ function volumeByExercise(sets) {
 }
 
 const SESSIONS_SHOWN = 2;
-const TREND_POINTS = 12;
-
-// All-time personal record (max weight ever logged) per exercise, plus a
-// per-exercise sparkline of each session's top weight for that exercise.
-async function getExerciseInsights(profileId) {
-	if (!profileId) return { records: {}, trends: {} };
-
-	const rows = await db
-		.select({
-			exercise: workoutSets.exercise,
-			weight: workoutSets.weight,
-			reps: workoutSets.reps,
-			sessionId: workoutSets.sessionId,
-			createdAt: workoutSessions.createdAt
-		})
-		.from(workoutSets)
-		.innerJoin(workoutSessions, eq(workoutSets.sessionId, workoutSessions.id))
-		.where(eq(workoutSessions.profileId, profileId));
-
-	const records = {};
-	const bestPerSession = {};
-
-	for (const row of rows) {
-		const weight = Number(row.weight);
-		if (weight <= 0) continue;
-
-		const record = records[row.exercise];
-		if (!record || weight > record.weight) {
-			records[row.exercise] = { weight, reps: row.reps, date: row.createdAt };
-		}
-
-		bestPerSession[row.exercise] ??= new Map();
-		const sessionMap = bestPerSession[row.exercise];
-		const existing = sessionMap.get(row.sessionId);
-		if (!existing || weight > existing.weight) {
-			sessionMap.set(row.sessionId, { weight, date: row.createdAt });
-		}
-	}
-
-	const trends = {};
-	for (const [exercise, sessionMap] of Object.entries(bestPerSession)) {
-		trends[exercise] = [...sessionMap.values()]
-			.sort((a, b) => new Date(a.date) - new Date(b.date))
-			.slice(-TREND_POINTS);
-	}
-
-	return { records, trends };
-}
 
 // Post-save summary: new PRs hit this session, volume vs the previous session,
 // and the resulting streak — everything shown on the "workout saved" card.

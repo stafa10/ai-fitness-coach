@@ -4,6 +4,7 @@
 	import Button from '$lib/components/Button.svelte';
 	import StatTile from '$lib/components/StatTile.svelte';
 	import { getI18n } from '$lib/i18n/i18n.svelte.js';
+	import { computeNutritionTargets } from '$lib/nutritionCalc.js';
 
 	const i18n = getI18n();
 	const t = i18n.t;
@@ -36,9 +37,51 @@
 		data.logs?.[0]?.createdAt ? relativeTime(data.logs[0].createdAt) : null
 	);
 	const streak = $derived(data.streak ?? 0);
-	const weekActivity = $derived(data.weekActivity ?? Array(7).fill(false));
 	const weekDayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-	const todayIndex = new Date().getDay();
+
+	const adherenceHeatmap = $derived(data.adherenceHeatmap ?? []);
+	const heatmapMaxVolume = $derived(Math.max(1, ...adherenceHeatmap.flat().map((d) => d.volume)));
+	const heatmapSessionCount = $derived(adherenceHeatmap.flat().filter((d) => d.done).length);
+	function heatmapTier(day) {
+		if (!day.done) return 0;
+		const ratio = day.volume / heatmapMaxVolume;
+		if (ratio > 0.66) return 3;
+		if (ratio > 0.33) return 2;
+		return 1;
+	}
+	// A "YYYY-MM-DD" string parses as UTC midnight; appending a bare local time forces it to
+	// parse as local midnight instead, so formatting it back never shifts a day off in
+	// timezones behind UTC (the same class of bug already hit once with generatedWorkoutAt).
+	function localDate(dateKey) {
+		return new Date(`${dateKey}T00:00:00`);
+	}
+
+	// First column of each new month gets a label, so the grid reads like a real calendar.
+	const heatmapMonthLabels = $derived(
+		adherenceHeatmap.map((week, i) => {
+			const month = localDate(week[0].date).toLocaleDateString(i18n.locale, { month: 'short' });
+			const prevMonth =
+				i > 0
+					? localDate(adherenceHeatmap[i - 1][0].date).toLocaleDateString(i18n.locale, {
+							month: 'short'
+						})
+					: null;
+			return month !== prevMonth ? month : '';
+		})
+	);
+
+	let selectedDay = $state(null);
+	const selectedDayLabel = $derived(
+		selectedDay
+			? localDate(selectedDay.date).toLocaleDateString(i18n.locale, {
+					weekday: 'long',
+					day: 'numeric',
+					month: 'long'
+				})
+			: null
+	);
+
+	const todayNutrition = $derived(data.todayNutrition);
 
 	const volumeHistory = $derived(data.volumeHistory ?? []);
 	const volumeBars = $derived.by(() => {
@@ -60,6 +103,41 @@
 	const progressHistory = $derived(data.progressHistory ?? []);
 	const chartW = 100;
 	const chartH = 40;
+
+	const exerciseTrends = $derived(data.exerciseTrends ?? {});
+	const exerciseNames = $derived(Object.keys(exerciseTrends));
+	let selectedExercise = $state(null);
+	const currentExercise = $derived(selectedExercise ?? exerciseNames[0] ?? null);
+	const currentTrend = $derived(currentExercise ? (exerciseTrends[currentExercise] ?? []) : []);
+	const strengthChartPoints = $derived.by(() => {
+		if (currentTrend.length < 2) return null;
+		const weights = currentTrend.map((p) => Number(p.weight));
+		const min = Math.min(...weights);
+		const max = Math.max(...weights);
+		const range = max - min || 1;
+		const padY = 4;
+		return currentTrend.map((p, i) => ({
+			x: (i / (currentTrend.length - 1)) * chartW,
+			y: chartH - padY - ((Number(p.weight) - min) / range) * (chartH - padY * 2),
+			weight: Number(p.weight),
+			date: p.date
+		}));
+	});
+	const strengthLinePath = $derived(
+		strengthChartPoints ? 'M' + strengthChartPoints.map((p) => `${p.x},${p.y}`).join(' L') : ''
+	);
+	const strengthAreaPath = $derived(
+		strengthChartPoints
+			? `${strengthLinePath} L${strengthChartPoints[strengthChartPoints.length - 1].x},${chartH} L0,${chartH} Z`
+			: ''
+	);
+	const strengthDelta = $derived(
+		currentTrend.length >= 2
+			? Number(currentTrend.at(-1).weight) - Number(currentTrend[0].weight)
+			: null
+	);
+	const strengthLatest = $derived(currentTrend.at(-1)?.weight ?? null);
+
 	const chartPoints = $derived.by(() => {
 		if (progressHistory.length < 2) return null;
 		const weights = progressHistory.map((p) => Number(p.weight));
@@ -100,6 +178,7 @@
 	let bmi = $state(null);
 	let bmiCategoryKey = $state('');
 	let calories = $state(null);
+	let calculatedCalories = $state(null);
 	let protein = $state(null);
 	let carbs = $state(null);
 	let fats = $state(null);
@@ -119,47 +198,13 @@
 		else if (bmi < 30) bmiCategoryKey = 'overweight';
 		else bmiCategoryKey = 'obese';
 
-		let bmr =
-			10 * Number(profile.weight) +
-			6.25 * Number(profile.height) -
-			5 * profile.age +
-			(profile.gender === 'Female' ? -161 : 5);
+		const targets = computeNutritionTargets(profile);
+		calories = targets.calories;
+		calculatedCalories = targets.calculatedCalories;
+		protein = targets.protein;
+		carbs = targets.carbs;
+		fats = targets.fats;
 
-		const activity = {
-			Sedentary: 1.2,
-			'Lightly Active': 1.375,
-			'Moderately Active': 1.55,
-			'Very Active': 1.725
-		};
-		calories = Math.round(bmr * (activity[profile.activityLevel] ?? 1.2));
-
-		// Adjust calories based on goal
-		if (profile.goal === 'Weight Loss') {
-			calories -= 500;
-		}
-
-		if (profile.goal === 'Muscle Gain') {
-			calories += 300;
-		}
-
-		if (profile.goal === 'Strength Building') {
-			calories += 200;
-		}
-
-		// Protein
-		if (profile.goal === 'Weight Loss') {
-			protein = Math.round(Number(profile.weight) * 2.4);
-		} else if (profile.goal === 'Muscle Gain') {
-			protein = Math.round(Number(profile.weight) * 2.2);
-		} else {
-			protein = Math.round(Number(profile.weight) * 2);
-		}
-
-		// Fat
-		fats = Math.round((calories * 0.25) / 9);
-
-		// Carbs
-		carbs = Math.round((calories - protein * 4 - fats * 9) / 4);
 		if (profile.goal === 'Weight Loss') {
 			nutritionMessage = t('dashboard.nutritionWeightLoss');
 		}
@@ -372,26 +417,97 @@
 			</div>
 		</section>
 
-		<div class="week-strip motion-in" style="animation-delay: 220ms">
-			<span class="week-strip-label">{t('dashboard.thisWeek')}</span>
-			<div class="week-dots">
-				{#each weekDayLabels as label, i (i)}
-					<div class="week-dot-wrap">
-						<div
-							class="week-dot {weekActivity[i] ? 'active' : ''} {i === todayIndex ? 'today' : ''}"
-						>
-							{#if weekActivity[i]}<Icon name="check" size={11} />{/if}
-						</div>
-						<span class="week-dot-label">{label}</span>
+		<div class="panel heatmap-panel motion-in" style="--panel-accent: var(--accent-green)">
+			<div class="panel-head">
+				<div class="panel-icon"><Icon name="calendar" size={16} /></div>
+				<h2>{t('dashboard.adherenceHeatmap')}</h2>
+				<span class="heatmap-sub">{t('dashboard.last12Weeks')}</span>
+			</div>
+
+			<div class="heatmap-headline">
+				<div class="heatmap-stat">
+					<span class="heatmap-count">{heatmapSessionCount}</span>
+					<span class="heatmap-count-label">{t('dashboard.sessionsIn12Weeks')}</span>
+				</div>
+				<div class="heatmap-stat">
+					<span class="heatmap-count">{streak}</span>
+					<span class="heatmap-count-label"
+						>{streak === 1 ? t('dashboard.dayInARow') : t('dashboard.daysInARow')}</span
+					>
+				</div>
+			</div>
+
+			<div class="heatmap-body">
+				<div class="heatmap-daylabels">
+					{#each weekDayLabels as label, i (i)}
+						<span>{i % 2 === 1 ? label : ''}</span>
+					{/each}
+				</div>
+				<div class="heatmap-scroll">
+					<div class="heatmap-months">
+						{#each heatmapMonthLabels as label, i (i)}
+							<span>{label}</span>
+						{/each}
 					</div>
-				{/each}
+					<div class="heatmap-grid">
+						{#each adherenceHeatmap as week, wi (wi)}
+							<div class="heatmap-col">
+								{#each week as day (day.date)}
+									<button
+										type="button"
+										class="heatmap-cell tier-{heatmapTier(day)} {day.isFuture
+											? 'future'
+											: ''} {selectedDay?.date === day.date ? 'selected' : ''}"
+										disabled={day.isFuture}
+										title="{day.date}{day.done ? ` · ${day.volume.toLocaleString()} kg` : ''}"
+										onclick={() => (selectedDay = day)}
+										aria-label={day.date}
+									></button>
+								{/each}
+							</div>
+						{/each}
+					</div>
+				</div>
+			</div>
+
+			{#if selectedDay}
+				<div class="heatmap-detail">
+					<div>
+						<strong>{selectedDayLabel}</strong>
+						<p>
+							{selectedDay.done
+								? t('dashboard.heatmapVolumeLogged', {
+										n: selectedDay.volume.toLocaleString()
+									})
+								: t('dashboard.heatmapNoSession')}
+						</p>
+					</div>
+					{#if selectedDay.done}
+						<a href={resolve('/history')} class="panel-link">{t('dashboard.viewInHistory')}</a>
+					{/if}
+				</div>
+			{/if}
+
+			<div class="heatmap-legend">
+				<span>{t('dashboard.less')}</span>
+				<span class="heatmap-cell tier-0"></span>
+				<span class="heatmap-cell tier-1"></span>
+				<span class="heatmap-cell tier-2"></span>
+				<span class="heatmap-cell tier-3"></span>
+				<span>{t('dashboard.more')}</span>
 			</div>
 		</div>
 
 		<div class="panel nutrition-panel motion-in" style="--panel-accent: var(--accent-purple)">
-			<div class="panel-head">
-				<div class="panel-icon"><Icon name="flame" size={16} /></div>
-				<h2>{t('dashboard.dailyNutrition')}</h2>
+			<div class="panel-head panel-head-row">
+				<div class="panel-head-left">
+					<div class="panel-icon"><Icon name="flame" size={16} /></div>
+					<h2>{t('dashboard.dailyNutrition')}</h2>
+					{#if profile.customCalorieTarget}
+						<span class="custom-badge">{t('dashboard.customTarget')}</span>
+					{/if}
+				</div>
+				<a href={resolve('/nutrition')} class="panel-link">{t('dashboard.logFood')}</a>
 			</div>
 
 			<div class="nutrition-grid">
@@ -402,8 +518,33 @@
 			</div>
 
 			<p class="nutrition-tip">{nutritionMessage}</p>
+			{#if profile.customCalorieTarget && calculatedCalories}
+				<p class="nutrition-trend">
+					<Icon name="target" size={13} />
+					{t('dashboard.calculatedWouldBe', { n: calculatedCalories.toLocaleString() })}
+				</p>
+			{/if}
 			{#if weightTrendNote}
 				<p class="nutrition-trend"><Icon name="chart" size={13} /> {weightTrendNote}</p>
+			{/if}
+			{#if todayNutrition}
+				<div class="today-log">
+					<span
+						>{t('dashboard.loggedToday', {
+							cal: todayNutrition.calories.toLocaleString(),
+							target: calories?.toLocaleString() ?? '—'
+						})}</span
+					>
+					<div class="today-log-bar">
+						<div
+							class="today-log-fill"
+							style="width: {Math.min(
+								100,
+								Math.round((todayNutrition.calories / (calories || 1)) * 100)
+							)}%"
+						></div>
+					</div>
+				</div>
 			{/if}
 		</div>
 
@@ -502,6 +643,56 @@
 							</div>
 						{/each}
 					</div>
+				</div>
+			</div>
+		{/if}
+
+		{#if exerciseNames.length > 0}
+			<div class="panel strength-panel motion-in" style="--panel-accent: var(--accent-blue)">
+				<div class="panel-head panel-head-row">
+					<div class="panel-head-left">
+						<div class="panel-icon"><Icon name="chart" size={16} /></div>
+						<h2>{t('dashboard.strengthProgression')}</h2>
+					</div>
+					<select class="exercise-select" bind:value={selectedExercise}>
+						{#each exerciseNames as name (name)}
+							<option value={name}>{name}</option>
+						{/each}
+					</select>
+				</div>
+
+				<div class="strength-body">
+					{#if strengthChartPoints}
+						<svg class="strength-chart" viewBox="0 0 {chartW} {chartH}" preserveAspectRatio="none">
+							<defs>
+								<linearGradient id="strengthFill" x1="0" y1="0" x2="0" y2="1">
+									<stop offset="0%" stop-color="var(--accent-blue)" stop-opacity="0.35" />
+									<stop offset="100%" stop-color="var(--accent-blue)" stop-opacity="0" />
+								</linearGradient>
+							</defs>
+							<path d={strengthAreaPath} fill="url(#strengthFill)" />
+							<path
+								d={strengthLinePath}
+								fill="none"
+								stroke="var(--accent-blue)"
+								stroke-width="1.5"
+							/>
+						</svg>
+						<div class="weight-meta">
+							<div>
+								<span class="weight-latest">{strengthLatest} kg</span>
+								{#if strengthDelta !== null && strengthDelta !== 0}
+									<span class="weight-delta {strengthDelta > 0 ? 'good' : 'bad'}">
+										{strengthDelta > 0 ? '+' : ''}{strengthDelta.toFixed(1)} kg
+									</span>
+								{/if}
+							</div>
+							<span class="weight-count">{currentTrend.length} {t('dashboard.sessionsLogged')}</span
+							>
+						</div>
+					{:else}
+						<p class="weight-empty">{t('dashboard.strengthEmpty')}</p>
+					{/if}
 				</div>
 			</div>
 		{/if}
@@ -1356,67 +1547,221 @@
 		color: var(--accent-green);
 	}
 
-	/* Weekly consistency strip */
-	.week-strip {
-		display: flex;
-		align-items: center;
-		gap: 1.2rem;
-		flex-wrap: wrap;
-		background: var(--bg-panel);
-		border: 1px solid var(--border-subtle);
-		border-radius: var(--radius-lg);
-		padding: 1rem 1.4rem;
+	/* Adherence heatmap */
+	.heatmap-panel {
 		margin-bottom: 1.5rem;
 	}
-	.week-strip-label {
-		font-size: 0.78rem;
-		font-weight: 700;
+	.heatmap-sub {
+		margin-left: auto;
+		font-size: 0.75rem;
 		color: var(--text-faint);
-		text-transform: uppercase;
-		letter-spacing: 1px;
-		flex-shrink: 0;
+		font-weight: 600;
 	}
-	.week-dots {
+	.heatmap-headline {
 		display: flex;
-		gap: 0.7rem;
-		flex: 1;
+		gap: 2.5rem;
+		margin-bottom: 1.6rem;
 	}
-	.week-dot-wrap {
+	.heatmap-stat {
 		display: flex;
 		flex-direction: column;
-		align-items: center;
-		gap: 0.35rem;
+		gap: 0.1rem;
 	}
-	.week-dot {
+	.heatmap-count {
+		font-family: var(--font-display);
+		font-size: 2rem;
+		font-weight: 700;
+		line-height: 1.1;
+		background: var(--gradient-accent);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+	.heatmap-count-label {
+		font-size: 0.8rem;
+		color: var(--text-muted);
+		font-weight: 600;
+	}
+	.heatmap-body {
+		display: flex;
+		gap: 0.8rem;
+	}
+	.heatmap-daylabels {
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+		flex-shrink: 0;
+		padding-top: 27px;
+	}
+	.heatmap-daylabels span {
+		height: 28px;
+		font-size: 0.72rem;
+		font-weight: 600;
+		color: var(--text-faint);
+		line-height: 28px;
+	}
+	.heatmap-scroll {
+		flex: 1;
+		min-width: 0;
+		overflow-x: auto;
+		padding-bottom: 0.3rem;
+	}
+	.heatmap-months {
+		display: flex;
+		gap: 7px;
+		justify-content: center;
+		margin-bottom: 6px;
+	}
+	.heatmap-months span {
+		width: 28px;
+		flex-shrink: 0;
+		font-size: 0.72rem;
+		font-weight: 700;
+		color: var(--text-faint);
+		white-space: nowrap;
+	}
+	.heatmap-grid {
+		display: flex;
+		gap: 7px;
+		justify-content: center;
+	}
+	.heatmap-col {
+		display: flex;
+		flex-direction: column;
+		gap: 7px;
+		flex-shrink: 0;
+	}
+	.heatmap-cell {
+		all: unset;
+		box-sizing: border-box;
+		display: block;
 		width: 28px;
 		height: 28px;
-		border-radius: 999px;
+		border-radius: 7px;
+		background: var(--bg-input);
+		border: 1px solid var(--border-subtle);
+		cursor: pointer;
+		transition:
+			transform var(--motion-fast) var(--ease-spring),
+			box-shadow var(--motion-fast) ease;
+	}
+	.heatmap-cell:disabled {
+		cursor: default;
+	}
+	.heatmap-cell:not(:disabled):hover {
+		transform: scale(1.15);
+		box-shadow: 0 0 0 1px var(--text-faint);
+	}
+	.heatmap-cell.selected {
+		box-shadow: 0 0 0 2px var(--accent-volt);
+	}
+	.heatmap-cell.tier-1 {
+		background: color-mix(in srgb, var(--accent-green) 35%, var(--bg-input));
+		border-color: transparent;
+	}
+	.heatmap-cell.tier-2 {
+		background: color-mix(in srgb, var(--accent-green) 70%, var(--accent-volt) 10%);
+		border-color: transparent;
+	}
+	.heatmap-cell.tier-3 {
+		background: var(--gradient-volt);
+		border-color: transparent;
+		box-shadow: 0 0 12px rgba(215, 255, 61, 0.45);
+	}
+	.heatmap-cell.tier-3.selected {
+		box-shadow:
+			0 0 12px rgba(215, 255, 61, 0.45),
+			0 0 0 2px var(--accent-volt);
+	}
+	.heatmap-cell.future {
+		opacity: 0.35;
+	}
+	.heatmap-detail {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 1rem;
+		margin-top: 1.2rem;
+		padding: 0.9rem 1.1rem;
+		background: var(--bg-panel-soft);
+		border: 1px solid var(--border-subtle);
+		border-radius: var(--radius-md);
+	}
+	.heatmap-detail strong {
+		font-size: 0.88rem;
+	}
+	.heatmap-detail p {
+		margin: 0.15rem 0 0;
+		font-size: 0.8rem;
+		color: var(--text-faint);
+	}
+	.heatmap-legend {
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		gap: 0.35rem;
+		margin-top: 1.2rem;
+		font-size: 0.75rem;
+		color: var(--text-faint);
+	}
+	.heatmap-legend .heatmap-cell {
+		width: 16px;
+		height: 16px;
+		cursor: default;
+	}
+
+	/* Strength progression */
+	.strength-panel {
+		margin-bottom: 1.5rem;
+	}
+	.exercise-select {
+		padding: 0.4rem 0.7rem;
+		border-radius: var(--radius-sm);
 		background: var(--bg-input);
 		border: 1px solid var(--border-strong);
-		color: var(--text-faint);
-		transition: 0.2s;
+		color: var(--text-primary);
+		font-family: var(--font-sans);
+		font-size: 0.82rem;
+		outline: none;
 	}
-	.week-dot.active {
-		background: var(--gradient-accent);
-		border-color: transparent;
-		color: white;
-		box-shadow: var(--shadow-glow-blue);
+	.strength-chart {
+		width: 100%;
+		height: 90px;
+		display: block;
 	}
-	.week-dot.today {
-		box-shadow: 0 0 0 2px var(--accent-volt);
+	.strength-body {
+		display: flex;
+		flex-direction: column;
 	}
-	.week-dot.active.today {
-		box-shadow:
-			var(--shadow-glow-blue),
-			0 0 0 2px var(--accent-volt);
-	}
-	.week-dot-label {
-		font-size: 0.68rem;
+
+	/* Custom calorie target / today's log */
+	.custom-badge {
+		font-size: 0.65rem;
 		font-weight: 700;
-		color: var(--text-faint);
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.15rem 0.5rem;
+		border-radius: 999px;
+		background: rgba(124, 58, 237, 0.15);
+		color: var(--accent-blue);
+	}
+	.today-log {
+		margin-top: 0.8rem;
+		font-size: 0.8rem;
+		color: var(--text-muted);
+	}
+	.today-log-bar {
+		margin-top: 0.4rem;
+		height: 6px;
+		border-radius: 999px;
+		background: var(--bg-input);
+		overflow: hidden;
+	}
+	.today-log-fill {
+		height: 100%;
+		background: var(--gradient-accent);
+		border-radius: 999px;
+		transition: width var(--motion-base) var(--ease-out);
 	}
 
 	/* Training volume */
